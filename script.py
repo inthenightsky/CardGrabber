@@ -41,7 +41,7 @@ async def fetch_certificate_data(
     timeout: int = DEFAULT_TIMEOUT,
     retry_count: int = DEFAULT_RETRY_COUNT,
     retry_delay: float = DEFAULT_RETRY_DELAY
-) -> tuple[str, str, str] | None:
+) -> tuple[str, str, str, str, str, str, str] | None:
     url = f"https://acegrading.com/cert/{certificate_id}"
 
     for attempt in range(1, retry_count + 2):
@@ -59,15 +59,29 @@ async def fetch_certificate_data(
 
             card_name_locator = page.locator("//h2[contains(@class, 'sm:text-2xl')]")
             card_name_raw = await card_name_locator.first.text_content()
-            card_name: str = " ".join(card_name_raw.split())
+            full_card_info: str = " ".join(card_name_raw.split())
+
+            # Parse the card info into separate components
+            # Expected format: "[Card Name] - [Card Number] - [Set] - [Year] - [Variant]"
+            parts = full_card_info.split(" - ")
+
+            card_name = parts[0] if len(parts) > 0 else ""
+            card_number = parts[1] if len(parts) > 1 else ""
+            card_set = parts[2] if len(parts) > 2 else ""
+            year = parts[3] if len(parts) > 3 else ""
+            variant = parts[4] if len(parts) > 4 else ""
+
+            # If there are fewer parts than expected, log a warning
+            if len(parts) < 5:
+                logger.warning(f"Card info for certificate {certificate_id} doesn't match expected format: {full_card_info}")
 
             grade_locator = page.locator("//div[contains(@class, 'w-3/4') and contains(@class, 'bg-gold')]")
             grade_raw = await grade_locator.first.text_content()
             grade: str = grade_raw.strip()
 
-            logger.debug(f"Fetched certificate {certificate_id}: {card_name} - {grade}")
+            logger.debug(f"Fetched certificate {certificate_id}: {full_card_info} - {grade}")
             await page.close()
-            return certificate_id, card_name, grade
+            return certificate_id, card_name, card_number, card_set, year, variant, grade
 
         except PlaywrightTimeoutError:
             logger.warning(f"Timeout for certificate {certificate_id} on attempt {attempt}")
@@ -77,7 +91,7 @@ async def fetch_certificate_data(
             await page.close()
 
     await save_debug_snapshot(context, certificate_id, timeout=timeout)
-    return certificate_id, "Error", "Error"
+    return certificate_id, "Error", "Error", "Error", "Error", "Error", "Error"
 
 async def save_debug_snapshot(context: BrowserContext, certificate_id: str, timeout: int = DEFAULT_TIMEOUT) -> None:
     page = await create_stealth_page(context)
@@ -103,7 +117,7 @@ async def process_certificate_batch(
     retry_count: int = DEFAULT_RETRY_COUNT,
     retry_delay: float = DEFAULT_RETRY_DELAY,
     rate_limit: float = DEFAULT_RATE_LIMIT
-) -> List[Tuple[str, str, str]]:
+) -> List[Tuple[str, str, str, str, str, str, str]]:
     tasks = []
     for index, certificate_id in enumerate(certificate_ids):
         if index > 0 and rate_limit > 0:
@@ -158,7 +172,7 @@ async def main() -> None:
         browser = await playwright.chromium.launch(headless=False)
         context = await browser.new_context()
 
-        all_results: List[Tuple[str, str, str]] = []
+        all_results: List[Tuple[str, str, str, str, str, str, str]] = []
 
         with tqdm(total=len(certificate_ids), desc="Processing certificates") as progress_bar:
             for i in range(0, len(certificate_ids), args.concurrency):
@@ -179,7 +193,7 @@ async def main() -> None:
     try:
         with open(output_file, "w", newline="", encoding="utf-8") as csvfile:
             writer = csv.writer(csvfile)
-            writer.writerow(["Certificate ID", "Card Name", "Grade"])
+            writer.writerow(["Certificate ID", "Card Name", "Card Number", "Set", "Year", "Variant", "Grade"])
             writer.writerows(all_results)
         logger.info(f"Saved results to {output_file}")
     except Exception as error:
