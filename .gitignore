@@ -1,5 +1,4 @@
 .venv
-.user_data*
 *.log
 *.csv
 .idea/
