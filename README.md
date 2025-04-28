@@ -81,8 +81,8 @@ The script generates three types of output files:
 
 1. **Results CSV** (`cert_lookup_results_YYYYMMDD_HHMMSS.csv`):
    ```
-   Certificate ID,Card Name,Grade
-   123456,Example Card Name,10
+   Certificate ID,Card Name,Card Number,Set,Year,Variant,Grade
+   123456,Bronzong,208/184,VMAX Climax,2021,Character Rare,10
    ```
 
 2. **Log File** (`acegrading_scraper_YYYYMMDD_HHMMSS.log`):
