@@ -29,8 +29,8 @@ Key Features:
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/ace-grading-scraper.git
-   cd ace-grading-scraper
+   git clone https://github.com/inthenightsky/CardGrabber
+   cd CardGrabber
    ```
 
 2. Set up a virtual environment:
